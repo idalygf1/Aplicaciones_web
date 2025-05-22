@@ -1,12 +1,10 @@
-// endpoint recibe un request, responde un response
 import { Request, Response } from "express";
-import { generateAccessToken } from "../utils/generateToke"; // Asegúrate que el archivo se llame así
+import { generateAccessToken } from "../utils/generateToke";
 import dayjs from "dayjs";
-import cache from "../utils/cache"; // Asegúrate de tener esta importación correctamente configurada
+import cache from "../utils/cache";
+
 
 export const login = (req: Request, res: Response) => {
-  let number: number = 1;
-
   const { username, password } = req.body;
 
   if (username !== "admin" || password !== "12345") {
@@ -16,17 +14,20 @@ export const login = (req: Request, res: Response) => {
   const userId = "123456789";
   const accessToken = generateAccessToken(userId);
 
-  cache.set(userId, accessToken, 60 * 15); // 15 minutos en segundos
+  // Guardar en cache por 15 minutos
+  cache.set(userId, accessToken, 60 * 15);
 
   return res.json({
     message: "Login exitoso",
-    accessToken
+    accessToken,
   });
 };
 
+
 export const getTimeToken = (req: Request, res: Response) => {
-  const userId = "123456789";
-  const ttl = cache.getTtl(userId); // Tiempo de expiración en ms
+  const { userId } = req.params;
+
+  const ttl = cache.getTtl(userId);
 
   if (!ttl) {
     return res.status(404).json({ message: "Token no encontrado" });
@@ -34,11 +35,34 @@ export const getTimeToken = (req: Request, res: Response) => {
 
   const now = Date.now();
   const timeToLiveSeconds = Math.floor((ttl - now) / 1000);
-  const expTime = dayjs(ttl).format('HH:mm:ss');
+  const expTime = dayjs(ttl).format("HH:mm:ss");
 
   return res.json({
     message: "Token activo",
     expiraEn: `${timeToLiveSeconds} segundos`,
-    horaExpiracion: expTime
+    horaExpiracion: expTime,
+  });
+};
+
+
+export const updateToken = (req: Request, res: Response) => {
+  const { userId } = req.params;
+
+  const ttl = cache.getTtl(userId);
+  if (!ttl) {
+    return res.status(404).json({ message: "Token no encontrado" });
+  }
+
+  const token = cache.get(userId);
+  if (!token) {
+    return res.status(404).json({ message: "No se encontró el token para actualizar" });
+  }
+
+  const newTTL = 60 * 15; // 15 minutos
+  cache.set(userId, token, newTTL);
+
+  return res.json({
+    message: "Token actualizado",
+    nuevoTTL: `${newTTL} segundos`,
   });
 };
