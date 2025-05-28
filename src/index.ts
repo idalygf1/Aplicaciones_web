@@ -1,17 +1,25 @@
 import express from "express";
 import morgan from "morgan";
-import authRoutes from './routes/auth.routes'
+import authRoutes from './routes/auth.routes';
+import connectDBMongo from "./config/db";
 
+const app = express(); // Express app
+const PORT = 3000;
 
-const app = express(); // Creando un objeto del servidor express
-const PORT = 3000; // Número de puerto
+// Middlewares
+app.use(express.json()); // JSON parser
+app.use(morgan('dev')); // Logger
 
-app.use(express.json()); // Request es de tipo JSON
-app.use(morgan('dev')); // Agregando logs de peticiones
-
+// Rutas
 app.use('/api/auth', authRoutes);
 
-app.listen(PORT, () => {
-  console.log(`El servidor está en el puerto: ${PORT}`);
-  console.log("El servidor está en el puerto:", PORT);
-});
+// Conectar a MongoDB y levantar servidor
+connectDBMongo()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Servidor corriendo`);
+    });
+  })
+  .catch((error) => {
+    console.error("Error al conectar a MongoDB");
+  });

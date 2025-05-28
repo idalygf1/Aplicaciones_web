@@ -1,13 +1,20 @@
 import { Router } from "express";
-import { getTimeToken, login, updateToken } from "../controllers/auth.controller";
+import {
+  login,
+  getTimeToken,
+  updateToken,
+  getAllUsers,
+  getUserById,
+  createUser
+} from "../controllers/auth.controller";
 
 const router = Router();
 
-/*
-utiliza el endpoint Login por medio de la ruta /login
-*/
 router.post('/login', login);
 router.get('/getTime/:userId', getTimeToken);
-router.patch('/update/:userId', updateToken); 
+router.patch('/update/:userId', updateToken);
+router.get('/users', getAllUsers);
+router.get('/users/:id', getUserById);
+router.post('/users', createUser);
 
 export default router;
