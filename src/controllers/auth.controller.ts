@@ -3,23 +3,39 @@ import { generateAccessToken } from "../utils/generateToke";
 import dayjs from "dayjs";
 import cache from "../utils/cache";
 import { User } from "../models/user";
+import { Types } from "mongoose";
+import bcrypt from "bcryptjs";
 
-// LOGIN
-export const login = (req: Request, res: Response) => {
+// LOGIN (dinámico)
+export const login = async (req: Request, res: Response) => {
   const { username, password } = req.body;
 
-  if (username !== "admin" || password !== "12345") {
-    return res.status(401).json({ message: "Credenciales incorrectas" });
+  try {
+    const user = await User.findOne({ username });
+
+    if (!user) {
+      return res.status(401).json({ message: "Usuario no encontrado" });
+    }
+
+    const isPasswordValid = bcrypt.compareSync(password, user.password);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Contraseña incorrecta" });
+    }
+
+    const userId = user._id.toString();
+    const accessToken = generateAccessToken(userId);
+    cache.set(userId, accessToken, 60 * 15); // 15 minutos
+
+    return res.json({
+      message: "Login exitoso",
+      accessToken,
+    });
+
+  } catch (error) {
+    console.error("Error en login:", error);
+    res.status(500).json({ message: "Error al iniciar sesión", error });
   }
-
-  const userId = "123456789";
-  const accessToken = generateAccessToken(userId);
-  cache.set(userId, accessToken, 60 * 15); // 15 minutos
-
-  return res.json({
-    message: "Login exitoso",
-    accessToken,
-  });
 };
 
 // GET TTL TOKEN
@@ -74,13 +90,70 @@ export const getUserById = async (req: Request, res: Response) => {
   }
 };
 
-// CREATE USER
+// CREATE USER (con contraseña encriptada)
 export const createUser = async (req: Request, res: Response) => {
   try {
-    const newUser = await User.create(req.body);
-    res.status(201).json({ message: "Usuario creado", user: newUser });
+    const { password, ...rest } = req.body;
+
+    const salt = bcrypt.genSaltSync(10);
+    const hashedPassword = bcrypt.hashSync(password, salt);
+
+    const newUser = await User.create({
+      ...rest,
+      password: hashedPassword,
+    });
+
+    const { password: _, ...userWithoutPassword } = newUser.toObject();
+
+    res.status(201).json({
+      message: "Usuario creado",
+      user: userWithoutPassword,
+    });
+
   } catch (error) {
     console.error("Error al crear usuario:", error);
-    res.status(500).json({ message: "Error al crear usuario", error });
+    res.status(500).json({
+      message: "Error al crear usuario",
+      error,
+    });
+  }
+};
+
+// UPDATE USER
+export const updateUser = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  if (!Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "ID no válido" });
+  }
+
+  try {
+    const updatedUser = await User.findByIdAndUpdate(id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    res.json({
+      message: "Usuario actualizado correctamente",
+      user: updatedUser,
+    });
+
+  } catch (error: any) {
+    if (error.code === 11000) {
+      return res.status(409).json({
+        message: "El correo o nombre de usuario ya existe",
+        error: error.keyValue,
+      });
+    }
+
+    console.error("Error al actualizar usuario:", error);
+    res.status(500).json({
+      message: "Error al actualizar usuario",
+      error: error.message || error,
+    });
   }
 };

@@ -5,8 +5,10 @@ import {
   updateToken,
   getAllUsers,
   getUserById,
-  createUser
+  createUser,
+  updateUser
 } from "../controllers/auth.controller";
+
 
 const router = Router();
 
@@ -16,5 +18,7 @@ router.patch('/update/:userId', updateToken);
 router.get('/users', getAllUsers);
 router.get('/users/:id', getUserById);
 router.post('/users', createUser);
+router.patch('/users/:id', updateUser);
+
 
 export default router;
