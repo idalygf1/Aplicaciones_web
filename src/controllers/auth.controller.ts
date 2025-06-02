@@ -5,6 +5,9 @@ import cache from "../utils/cache";
 import { User } from "../models/user";
 import { Types } from "mongoose";
 import bcrypt from "bcryptjs";
+import { Role } from "../models/role";
+import { Order } from "../models/order";
+
 
 // LOGIN (dinámico)
 export const login = async (req: Request, res: Response) => {
@@ -156,4 +159,64 @@ export const updateUser = async (req: Request, res: Response) => {
       error: error.message || error,
     });
   }
+};
+
+// DELETE USER
+export const deleteUser = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  if (!Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "ID no válido" });
+  }
+
+  try {
+    const deletedUser = await User.findByIdAndDelete(id);
+
+    if (!deletedUser) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    res.json({
+      message: "Usuario eliminado correctamente",
+      user: deletedUser,
+    });
+
+  } catch (error) {
+    console.error("Error al eliminar usuario:", error);
+    res.status(500).json({
+      message: "Error al eliminar usuario",
+      error: error.message || error,
+    });
+  }
+};
+
+//PARA ROLES
+
+export const createRole = async (req: Request, res: Response) => {
+  try {
+    const newRole = await Role.create(req.body);
+    res.status(201).json({ message: "Rol creado", role: newRole });
+  } catch (error) {
+    res.status(500).json({ message: "Error al crear rol", error });
+  }
+};
+
+export const getAllRoles = async (_req: Request, res: Response) => {
+  const roles = await Role.find();
+  res.json({ roles });
+};
+
+// PARA ORDER
+export const createOrder = async (req: Request, res: Response) => {
+  try {
+    const newOrder = await Order.create(req.body);
+    res.status(201).json({ message: "Orden creada", order: newOrder });
+  } catch (error) {
+    res.status(500).json({ message: "Error al crear orden", error });
+  }
+};
+
+export const getAllOrders = async (_req: Request, res: Response) => {
+  const orders = await Order.find().populate("userId", "name email");
+  res.json({ orders });
 };
